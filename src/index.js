@@ -2,6 +2,7 @@
 import './sheets.config';
 import Product from './product.model';
 import Friend from './friend.model';
+import Expense from './expense.model';
 
 // เป็นท่ามาตรฐานในการสร้าง JSON Output ของ Apps Script ครับ
 const responseJSON = jsonObject => {
@@ -38,7 +39,6 @@ const doPost = e => {
     const friendName = parameters.Friends;
     const friendObj = Friend.where({ name: friendName }).first();
     if (friendObj.join === 'TRUE') {
-
       const response = {
         fulfillmentText: 'รายชื่อนี้อยู่ในปาร์ตี้แล้ว',
         fulfillmentMessages: [
@@ -51,28 +51,48 @@ const doPost = e => {
         ]
       }; // ส่งคำตอบกลับไป
       return responseJSON(response);
-    }else{
-      friendObj.join = 'TRUE';
-      friendObj.amount = '';
-      friendObj.net = '';
-      friendObj.save();
+    }
+    friendObj.join = 'TRUE';
+    friendObj.amount = '';
+    friendObj.net = '';
+    friendObj.save();
 
-      const response = {
-        fulfillmentText: `ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`,
-        fulfillmentMessages: [
-          {
-            facebook: {
-              type: 'text',
-              text: `ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`
-            }
+    const response = {
+      fulfillmentText: `ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`,
+      fulfillmentMessages: [
+        {
+          facebook: {
+            type: 'text',
+            text: `ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`
           }
-        ]
-      };
+        }
+      ]
+    };
 
-      // ส่งคำตอบกลับไป
-      return responseJSON(response);
+    // ส่งคำตอบกลับไป
+    return responseJSON(response);
   }
-
+  if (intent.displayName === `Add Transaction`) {
+    const friendName = parameters.Friends;
+    Expense.create({
+      name: friendName,
+      description: parameters.Description,
+      amount: parameters.number,
+      datetime: new Date()
+    });
+    const response = {
+      fulfillmentText: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`,
+      fulfillmentMessages: [
+        {
+          facebook: {
+            type: 'text',
+            text: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`
+          }
+        }
+      ]
+    };
+    return responseJSON(response);
+  }
   // ในการณีที่ไม่เจอ Intent ที่เขียนเอาไว้้
   return responseJSON({ fulfillmentText: 'ไม่เข้าใจค่ะ ลองใหม่อีกทีนะคะ' });
 };
