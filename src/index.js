@@ -3,6 +3,7 @@ import './sheets.config';
 import Product from './product.model';
 import Friend from './friend.model';
 import Expense from './expense.model';
+import Total from './total.model';
 
 // เป็นท่ามาตรฐานในการสร้าง JSON Output ของ Apps Script ครับ
 const responseJSON = jsonObject => {
@@ -115,14 +116,6 @@ const doPost = e => {
       name: 'Sterk',
       description: `${joinList.name}${joinList.isInParty}`
     });
-    // for (let i = 0; i < joinList.size(); ) {
-    //   joinList.get(i).join = '';
-    //   joinList.get(i).amount = '';
-    //   joinList.get(i).net = '';
-    //   joinList.get(i).save();
-    //   Logger.log(joinList.get(i));
-    //   i += 1;
-    // }
 
     const response = {
       fulfillmentText: `ล้างรายการสำเร็จ`,
@@ -161,17 +154,34 @@ const doPost = e => {
   }
 
   if (intent.displayName === `Get Status`) {
-    const friendName = parameters.Friends;
-    const friendObj = Friend.where({ isInParty: '1' }).all();
+    const friendObj = Friend.where({ isInParty: 1 }).all();
+    let status = 'แต่ละคนออกเงินไปดังนี้\n';
+    let i = 0;
+    for (; i < Object.keys(friendObj).length; ) {
+      status += `${friendObj[i].name} ${friendObj[i].amount} บาท\n`;
+      i += 1;
+    }
+    const tripPrice = Total.where({ name: `Total` }).first();
+    const pricePerPerson = Total.where({ name: `pps` }).first();
+    status += `\n\n##ยอดรวม## \n${tripPrice.amount}บาท\n\n##คิดเป็นต่อคนคือ##\n${pricePerPerson.amount}บาท\n\n##หักหนี้แล้วเท่ากับว่า## \n\n`;
+    i = 0;
+    for (; i < Object.keys(friendObj).length; ) {
+      if (friendObj[i].net < 0) {
+        status += `${friendObj[i].name} ต้องจ่ายเพิ่ม\n${friendObj[i].net} บาท\n\n`;
+      } else {
+        status += `${friendObj[i].name} ต้องได้คืน\n${friendObj[i].net} บาท\n\n`;
+      }
+      i += 1;
+    }
 
     const response = {
       // fulfillmentText: `เตะบัก ${friendObj.amount} ${friendObj.name}${friendObj.join}${friendObj.net}เรียบร้อยแล้ว`,
-      fulfillmentText: `เตะบัก${friendObj.name}${friendObj.isInParty}${friendObj.net}เรียบร้อยแล้ว`,
+      fulfillmentText: `${status}`,
       fulfillmentMessages: [
         {
           facebook: {
             type: 'text',
-            text: `เตะบัก ${friendName} เรียบร้อยแล้ว`
+            text: `${status}`
           }
         }
       ]
