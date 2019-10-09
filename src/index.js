@@ -43,7 +43,7 @@ const doPost = e => {
   if (intent.displayName === `Add Friend to the trip`) {
     const friendName = parameters.Friends;
     const friendObj = Friend.where({ name: friendName }).first();
-    if (friendObj.join === 'TRUE') {
+    if (friendObj.isInParty === '1') {
       const response = {
         fulfillmentText: 'รายชื่อนี้อยู่ในปาร์ตี้แล้ว',
         fulfillmentMessages: [
@@ -57,7 +57,7 @@ const doPost = e => {
       }; // ส่งคำตอบกลับไป
       return responseJSON(response);
     }
-    friendObj.join = 'TRUE';
+    friendObj.isInParty = '1';
     friendObj.amount = '';
     friendObj.net = '';
     friendObj.save();
@@ -109,11 +109,11 @@ const doPost = e => {
     }
 
     // Clear Friend
-    const joinList = Friend.where({ join: 'true' }).first();
+    const joinList = Friend.where({ isInParty: 'true' }).first();
     Logger.log(joinList);
     Expense.create({
       name: 'Sterk',
-      description: `${joinList.name}${joinList.amount}${joinList.join}`
+      description: `${joinList.name}${joinList.isInParty}`
     });
     // for (let i = 0; i < joinList.size(); ) {
     //   joinList.get(i).join = '';
@@ -141,13 +141,32 @@ const doPost = e => {
   if (intent.displayName === `Delete friend from the trip`) {
     const friendName = parameters.Friends;
     const friendObj = Friend.where({ name: friendName }).first();
-    friendObj.join = '';
+    friendObj.isInParty = '';
     friendObj.amount = '';
     friendObj.net = '';
     friendObj.save();
 
     const response = {
       fulfillmentText: `เตะบัก ${friendName} เรียบร้อยแล้ว`,
+      fulfillmentMessages: [
+        {
+          facebook: {
+            type: 'text',
+            text: `เตะบัก ${friendName} เรียบร้อยแล้ว`
+          }
+        }
+      ]
+    };
+    return responseJSON(response);
+  }
+
+  if (intent.displayName === `Get Status`) {
+    const friendName = parameters.Friends;
+    const friendObj = Friend.where({ isInParty: '1' }).all();
+
+    const response = {
+      // fulfillmentText: `เตะบัก ${friendObj.amount} ${friendObj.name}${friendObj.join}${friendObj.net}เรียบร้อยแล้ว`,
+      fulfillmentText: `เตะบัก${friendObj.name}${friendObj.isInParty}${friendObj.net}เรียบร้อยแล้ว`,
       fulfillmentMessages: [
         {
           facebook: {
