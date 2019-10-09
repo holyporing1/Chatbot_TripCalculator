@@ -11,11 +11,16 @@ const responseJSON = jsonObject => {
   );
 };
 
-const doPost = e => {
+const helloWorld = () => {
   const sheetId = '10m1_3E7-977ackY3diMva7JPaMFIGOxfkltmNP_t_cc';
   // eslint-disable-next-line no-global-assign
   Logger = BetterLog.useSpreadsheet(sheetId);
   Tamotsu.initialize();
+};
+
+global.helloWorld = helloWorld;
+
+const doPost = e => {
   const data = JSON.parse(e.postData.contents);
   // ตรวจสอบ request ว่ามีข้อมูลที่ต้องการไหม
   if (!data.queryResult) {
@@ -87,6 +92,67 @@ const doPost = e => {
           facebook: {
             type: 'text',
             text: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`
+          }
+        }
+      ]
+    };
+    return responseJSON(response);
+  }
+  if (intent.displayName === `Clear Trip`) {
+    // Clear expense
+    while (1) {
+      if (Expense.last() != null) {
+        Expense.last().destroy();
+      } else {
+        break;
+      }
+    }
+
+    // Clear Friend
+    const joinList = Friend.where({ join: 'true' }).first();
+    Logger.log(joinList);
+    Expense.create({
+      name: 'Sterk',
+      description: `${joinList.name}${joinList.amount}${joinList.join}`
+    });
+    // for (let i = 0; i < joinList.size(); ) {
+    //   joinList.get(i).join = '';
+    //   joinList.get(i).amount = '';
+    //   joinList.get(i).net = '';
+    //   joinList.get(i).save();
+    //   Logger.log(joinList.get(i));
+    //   i += 1;
+    // }
+
+    const response = {
+      fulfillmentText: `ล้างรายการสำเร็จ`,
+      fulfillmentMessages: [
+        {
+          facebook: {
+            type: 'text',
+            text: `ล้างรายการสำเร็จ`
+          }
+        }
+      ]
+    };
+    return responseJSON(response);
+  }
+
+  if (intent.displayName === `Delete friend from the trip`) {
+    const friendName = parameters.Friends;
+    const friendObj = Friend.where({ name: friendName }).first();
+    friendObj.join = '';
+    friendObj.amount = '';
+    friendObj.net = '';
+    friendObj.save();
+
+    const response = {
+      fulfillmentText: `เตะบัก ${friendName} เรียบร้อยแล้ว`,
+      fulfillmentMessages: [
+        {
+          facebook: {
+            type: 'text',
+            text: `เตะบัก ${friendName} เรียบร้อยแล้ว`
           }
         }
       ]
