@@ -79,20 +79,51 @@ const doPost = e => {
     return responseJSON(response);
   }
   if (intent.displayName === `Add Transaction`) {
+    const isParty = Friend.where({ isInParty: 1 }).all();
+    if (Object.keys(isParty).length < 1) {
+      const response = {
+        fulfillmentText: `คุณยังไม่มีเพื่อนในปาร์ตี้ กรุณาเพิ่มเพื่อนก่อนเพิ่มรายการ`,
+        fulfillmentMessages: [
+          {
+            facebook: {
+              type: 'text',
+              text: `คุณยังไม่มีเพื่อนในปาร์ตี้ กรุณาเพิ่มเพื่อนก่อนเพิ่มรายการ`
+            }
+          }
+        ]
+      };
+      return responseJSON(response);
+    }
+
     const friendName = parameters.Friends;
-    Expense.create({
-      name: friendName,
-      description: parameters.Description,
-      amount: parameters.number,
-      datetime: new Date()
-    });
+    const friend = Friend.where({ name: friendName }).first();
+    if (friend.isInParty === 1) {
+      Expense.create({
+        name: friendName,
+        description: parameters.Description,
+        amount: parameters.number,
+        datetime: new Date()
+      });
+      const response = {
+        fulfillmentText: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`,
+        fulfillmentMessages: [
+          {
+            facebook: {
+              type: 'text',
+              text: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`
+            }
+          }
+        ]
+      };
+      return responseJSON(response);
+    }
     const response = {
-      fulfillmentText: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`,
+      fulfillmentText: `เพื่อนคนนี้ไม่อยู่ในปาร์ตี้กรุณาเพิ่มเพื่อนก่อนครับ`,
       fulfillmentMessages: [
         {
           facebook: {
             type: 'text',
-            text: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`
+            text: `เพื่อนคนนี้ไม่อยู่ในปาร์ตี้กรุณาเพิ่มเพื่อนก่อนครับ`
           }
         }
       ]
@@ -101,21 +132,22 @@ const doPost = e => {
   }
   if (intent.displayName === `Clear Trip`) {
     // Clear expense
-    while (1) {
-      if (Expense.last() != null) {
-        Expense.last().destroy();
-      } else {
-        break;
-      }
+    const expense = Expense.all();
+    let i = 0;
+    for (; i < Object.keys(expense).length; ) {
+      expense[i].destroy();
+      i += 1;
     }
-
     // Clear Friend
-    const joinList = Friend.where({ isInParty: 'true' }).first();
-    Logger.log(joinList);
-    Expense.create({
-      name: 'Sterk',
-      description: `${joinList.name}${joinList.isInParty}`
-    });
+    const friendObj = Friend.where({ isInParty: 1 }).all();
+    i = 0;
+    for (; i < Object.keys(friendObj).length; ) {
+      friendObj[i].isInParty = '';
+      friendObj[i].amount = '';
+      friendObj[i].net = '';
+      friendObj[i].save();
+      i += 1;
+    }
 
     const response = {
       fulfillmentText: `ล้างรายการสำเร็จ`,
