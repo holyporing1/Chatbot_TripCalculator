@@ -1,11 +1,58 @@
 // เรียก config และ Product Model
 import './sheets.config';
 import Product from './product.model';
-import Friend from './friend.model';
-import Expense from './expense.model';
-import Total from './total.model';
+// import Friend from './friend.model';
+// import Expense from './expense.model';
+// import Total from './total.model';
 
-// เป็นท่ามาตรฐานในการสร้าง JSON Output ของ Apps Script ครับ
+const friends = SpreadsheetApp.getActive().getSheetByName('Friends');
+const expense = SpreadsheetApp.getActive().getSheetByName('Expense');
+const sheetTotal = SpreadsheetApp.getActive().getSheetByName('Total');
+const sheetSummary = SpreadsheetApp.getActive().getSheetByName('Summary');
+function generateReponse(msg) {
+  const response = {
+    fulfillmentText: msg,
+    fulfillmentMessages: [
+      {
+        text: {
+          text: [msg]
+        }
+      },
+      {
+        card: {
+          title: msg,
+          subtitle: `ต้องการทำอะไรต่อดีคะ`,
+          buttons: [
+            {
+              text: 'ดูคำสั่งต่างๆ'
+            }
+          ]
+        },
+        platform: 'FACEBOOK'
+      }
+    ]
+  };
+  return response;
+}
+
+function findFriend(name) {
+  let i = 2;
+  for (; i <= 48; ) {
+    if (friends.getRange(i, 2).getValue() === name) {
+      break;
+    }
+    i += 1;
+  }
+  return i;
+}
+
+function isInParty(i) {
+  return friends.getRange(i, 4).getValue() === 1;
+}
+function setParty(index, value) {
+  friends.getRange(index, 4).setValue(value);
+}
+// เป็นท่ามาตรฐานในการสร้าง JSON Output ของ Apps Script
 const responseJSON = jsonObject => {
   return ContentService.createTextOutput(JSON.stringify(jsonObject)).setMimeType(
     ContentService.MimeType.JSON
@@ -13,10 +60,7 @@ const responseJSON = jsonObject => {
 };
 
 const helloWorld = () => {
-  const sheetId = '10m1_3E7-977ackY3diMva7JPaMFIGOxfkltmNP_t_cc';
-  // eslint-disable-next-line no-global-assign
-  Logger = BetterLog.useSpreadsheet(sheetId);
-  Tamotsu.initialize();
+  Logger.log('Hello World');
 };
 
 global.helloWorld = helloWorld;
@@ -36,184 +80,71 @@ const doPost = e => {
     const product = Product.where({ name: productName }).first();
 
     // สร้าง fulfillment text เพื่อตอบกลับไปที่ dialoflow
-    const response = { fulfillmentText: `${product.name} ราคา £${product.price} ค่ะ` };
+    const response = { fulfillmentText: `${product.name} ราคา ${product.price}บาท ค่ะ` };
 
     // ส่งคำตอบกลับไป
     return responseJSON(response);
   }
   if (intent.displayName === `Add Friend to the trip`) {
     const friendName = parameters.Friends;
-    const friendObj = Friend.where({ name: friendName }).first();
-    if (friendObj.isInParty === '1') {
-      const response = {
-        fulfillmentText: 'รายชื่อนี้อยู่ในปาร์ตี้แล้ว',
-        fulfillmentMessages: [
-          {
-            facebook: {
-              type: 'text',
-              text: 'รายชื่อนี้อยู่ในปาร์ตี้แล้ว'
-            }
-          }
-        ]
-      }; // ส่งคำตอบกลับไป
+    const index = findFriend(friendName);
+
+    if (isInParty(index)) {
+      const response = generateReponse(`รายชื่อนี้อยู่ในปาร์ตี้แล้วค่ะ`);
+      // ส่งคำตอบกลับไป
       return responseJSON(response);
     }
-    friendObj.isInParty = '1';
-    friendObj.amount = '';
-    friendObj.net = '';
-    friendObj.save();
+    setParty(index, 1);
 
-    const response = {
-      fulfillmentText: `ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`,
-      fulfillmentMessages: [
-        {
-          facebook: {
-            type: 'text',
-            text: `ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`
-          }
-        }
-      ]
-    };
+    const response = generateReponse(`ขอต้อนรับ ${friendName} เข้าสู่ปาร์ตี้`);
 
     // ส่งคำตอบกลับไป
     return responseJSON(response);
   }
   if (intent.displayName === `Add Transaction`) {
-    const isParty = Friend.where({ isInParty: 1 }).all();
-    if (Object.keys(isParty).length < 1) {
-      const response = {
-        fulfillmentText: `คุณยังไม่มีเพื่อนในปาร์ตี้ กรุณาเพิ่มเพื่อนก่อนเพิ่มรายการ`,
-        fulfillmentMessages: [
-          {
-            facebook: {
-              type: 'text',
-              text: `คุณยังไม่มีเพื่อนในปาร์ตี้ กรุณาเพิ่มเพื่อนก่อนเพิ่มรายการ`
-            }
-          }
-        ]
-      };
-      return responseJSON(response);
-    }
-
     const friendName = parameters.Friends;
-    const friend = Friend.where({ name: friendName }).first();
-    if (friend.isInParty === 1) {
-      Expense.create({
-        name: friendName,
-        description: parameters.Description,
-        amount: parameters.number,
-        datetime: new Date()
-      });
-      const response = {
-        fulfillmentText: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`,
-        fulfillmentMessages: [
-          {
-            facebook: {
-              type: 'text',
-              text: `เพิ่มรายการ ${parameters.number} บาท สำเร็จ`
-            }
-          }
-        ]
-      };
+    const index = findFriend(friendName);
+    if (isInParty(index)) {
+      expense.appendRow([``, friendName, parameters.Description, parameters.number, new Date()]);
+      sheetSummary.appendRow([`=getSummary()`]);
+      const response = generateReponse(`เพิ่มรายการ ${parameters.number} บาท สำเร็จ`);
       return responseJSON(response);
     }
-    const response = {
-      fulfillmentText: `เพื่อนคนนี้ไม่อยู่ในปาร์ตี้กรุณาเพิ่มเพื่อนก่อนครับ`,
-      fulfillmentMessages: [
-        {
-          facebook: {
-            type: 'text',
-            text: `เพื่อนคนนี้ไม่อยู่ในปาร์ตี้กรุณาเพิ่มเพื่อนก่อนครับ`
-          }
-        }
-      ]
-    };
+    const response = generateReponse(`เพื่อนคนนี้ไม่อยู่ในปาร์ตี้กรุณาเพิ่มเพื่อนก่อนค่ะ`);
     return responseJSON(response);
   }
+
   if (intent.displayName === `Clear Trip`) {
-    // Clear expense
-    const expense = Expense.all();
-    let i = 0;
-    for (; i < Object.keys(expense).length; ) {
-      expense[i].destroy();
-      i += 1;
-    }
-    // Clear Friend
-    const friendObj = Friend.where({ isInParty: 1 }).all();
-    i = 0;
-    for (; i < Object.keys(friendObj).length; ) {
-      friendObj[i].isInParty = '';
-      friendObj[i].amount = '';
-      friendObj[i].net = '';
-      friendObj[i].save();
+    expense.clear();
+    expense.appendRow(['#', `name`, `description`, `amount`, `date`]);
+    expense.deleteRow(1);
+    sheetSummary.clear();
+    for (let i = 2; i <= 48; ) {
+      setParty(i, '');
       i += 1;
     }
 
-    const response = {
-      fulfillmentText: `ล้างรายการสำเร็จ`,
-      fulfillmentMessages: [
-        {
-          facebook: {
-            type: 'text',
-            text: `ล้างรายการสำเร็จ`
-          }
-        }
-      ]
-    };
+    const response = generateReponse(`ล้างรายการสำเร็จเรียบร้อยแล้วค่าาาา`);
     return responseJSON(response);
   }
 
   if (intent.displayName === `Delete friend from the trip`) {
     const friendName = parameters.Friends;
-    const friendObj = Friend.where({ name: friendName }).first();
-    friendObj.isInParty = '';
-    friendObj.amount = '';
-    friendObj.net = '';
-    friendObj.save();
+    const index = findFriend(friendName);
+    setParty(index, '');
 
-    const response = {
-      fulfillmentText: `เตะบัก ${friendName} เรียบร้อยแล้ว`,
-      fulfillmentMessages: [
-        {
-          facebook: {
-            type: 'text',
-            text: `เตะบัก ${friendName} เรียบร้อยแล้ว`
-          }
-        }
-      ]
-    };
+    const response = generateReponse(`เตะบัก ${friendName} เรียบร้อยแล้วค่ะ`);
     return responseJSON(response);
   }
 
   if (intent.displayName === `Get Status`) {
-    const friendObj = Friend.where({ isInParty: 1 }).all();
-    let status = 'แต่ละคนออกเงินไปดังนี้\n';
-    let i = 0;
-    for (; i < Object.keys(friendObj).length; ) {
-      status += `${friendObj[i].name} ${friendObj[i].amount} บาท\n`;
-      i += 1;
-    }
-    const tripPrice = Total.where({ name: `Total` }).first();
-    const pricePerPerson = Total.where({ name: `pps` }).first();
-    status += `\n\n##ยอดรวม## \n${tripPrice.amount}บาท\n\n##คิดเป็นต่อคนคือ##\n${pricePerPerson.amount}บาท\n\n##หักหนี้แล้วเท่ากับว่า## \n\n`;
-    i = 0;
-    for (; i < Object.keys(friendObj).length; ) {
-      if (friendObj[i].net < 0) {
-        status += `${friendObj[i].name} ต้องจ่ายเพิ่ม\n${friendObj[i].net} บาท\n\n`;
-      } else {
-        status += `${friendObj[i].name} ต้องได้คืน\n${friendObj[i].net} บาท\n\n`;
-      }
-      i += 1;
-    }
-
     const response = {
-      // fulfillmentText: `เตะบัก ${friendObj.amount} ${friendObj.name}${friendObj.join}${friendObj.net}เรียบร้อยแล้ว`,
-      fulfillmentText: `${status}`,
+      fulfillmentText: sheetSummary.getRange(sheetSummary.getLastRow(), 1).getValue(),
       fulfillmentMessages: [
         {
           facebook: {
             type: 'text',
-            text: `${status}`
+            text: sheetSummary.getRange(sheetSummary.getLastRow(), 1).getValue()
           }
         }
       ]
@@ -225,3 +156,37 @@ const doPost = e => {
 };
 
 global.doPost = doPost;
+
+const getSummary = () => {
+  // const data = range.getValue();
+  let spend = `แต่ละคนจ่ายเงินดังนี้\n\n`;
+  for (let i = 2; i <= 48; ) {
+    if (isInParty(i)) {
+      spend += `${friends.getRange(i, 2).getValue()} ออกเงินไป ${friends
+        .getRange(i, 3)
+        .getValue()}THB\n`;
+    }
+    i += 1;
+  }
+  spend += `\n\nรวมเป็นเงิน ${sheetTotal.getRange(2, 3).getValue()}THB\n`;
+  spend += `เฉลี่ยต่อคน ${sheetTotal.getRange(3, 3).getValue()}THB\n\n`;
+  spend += `====สรุป====\n\n`;
+  for (let i = 2; i <= 48; ) {
+    if (isInParty(i)) {
+      if (friends.getRange(i, 5).getValue() > 0) {
+        spend += `${friends.getRange(i, 2).getValue()} ได้เงินคืน ${friends
+          .getRange(i, 5)
+          .getValue()}THB\n`;
+      } else {
+        spend += `${friends.getRange(i, 2).getValue()} จ่ายเพิ่มอีก ${friends
+          .getRange(i, 5)
+          .getValue()}THB\n`;
+      }
+    }
+    i += 1;
+  }
+
+  Logger.log(spend);
+  return spend;
+};
+global.getSummary = getSummary;
