@@ -29,6 +29,19 @@ function generateReponse(msg) {
           ]
         },
         platform: 'FACEBOOK'
+      },
+      {
+        card: {
+          title: msg,
+          subtitle: `ต้องการทำอะไรต่อดีคะ`,
+          imageUri: 'https://i.ibb.co/RpyHXSJ/Screen-Shot-2562-10-12-at-00-53-21.png',
+          buttons: [
+            {
+              text: 'ดูคำสั่งต่างๆ'
+            }
+          ]
+        },
+        platform: 'LINE'
       }
     ]
   };
@@ -176,7 +189,7 @@ const getSummary = () => {
       if (friends.getRange(i, 5).getValue() > 0) {
         spend += `${friends.getRange(i, 2).getValue()} ได้เงินคืน ${friends
           .getRange(i, 5)
-          .getValue()}THB\n`;
+          .getValue()}THB \n promptpay: ${friends.getRange(i, 6).getValue()}\n\n`;
       } else {
         spend += `${friends.getRange(i, 2).getValue()} จ่ายเพิ่มอีก ${friends
           .getRange(i, 5)
