@@ -126,6 +126,14 @@ const doPost = e => {
     const response = generateReponse(`เพื่อนคนนี้ไม่อยู่ในปาร์ตี้กรุณาเพิ่มเพื่อนก่อนค่ะ`);
     return responseJSON(response);
   }
+  if (intent.displayName === `Get Promptpay`) {
+    const friendName = parameters.Friends;
+    const index = findFriend(friendName);
+    const response = generateReponse(
+      `Promptpay ${friendName} :  ${friends.getRange(index, 6).getValue()}`
+    );
+    return responseJSON(response);
+  }
 
   if (intent.displayName === `Clear Trip`) {
     expense.clear();
