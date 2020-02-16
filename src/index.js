@@ -159,17 +159,7 @@ const doPost = e => {
   }
 
   if (intent.displayName === `Get Status`) {
-    const response = {
-      fulfillmentText: sheetSummary.getRange(sheetSummary.getLastRow(), 1).getValue(),
-      fulfillmentMessages: [
-        {
-          facebook: {
-            type: 'text',
-            text: sheetSummary.getRange(sheetSummary.getLastRow(), 1).getValue()
-          }
-        }
-      ]
-    };
+    const response = generateReponse(sheetSummary.getRange(sheetSummary.getLastRow(), 1).getValue());
     return responseJSON(response);
   }
   // ในการณีที่ไม่เจอ Intent ที่เขียนเอาไว้้
